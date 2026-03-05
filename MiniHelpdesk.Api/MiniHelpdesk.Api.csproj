@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MiniHelpdesk.Application\MiniHelpdesk.Application.csproj" />
+    <ProjectReference Include="..\MiniHelpdesk.Domain\MiniHelpdesk.Domain.csproj" />
+    <ProjectReference Include="..\MiniHelpdesk.ApiContracts\MiniHelpdesk.ApiContracts.csproj" />
+	<PackageReference Include="Swashbuckle.AspNetCore" Version="6.*"/>
+  </ItemGroup>
+</Project>

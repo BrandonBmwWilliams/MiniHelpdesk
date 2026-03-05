@@ -1,0 +1,170 @@
+@page "/tickets"
+@inject TicketsApiClient Api
+
+<h2>Tickets</h2>
+
+<div style="display:grid; gap:1rem; grid-template-columns: 1fr;">
+    <section style="border:1px solid #ddd; padding:1rem; border-radius:8px;">
+        <h3 style="margin-top:0;">Create Ticket</h3>
+
+        <div style="display:grid; gap:.5rem; grid-template-columns: 1fr 1fr;">
+            <label>
+                Customer Name<br />
+                <input style="width:100%;" @bind="NewCustomerName" />
+            </label>
+
+            <label>
+                Customer Email<br />
+                <input style="width:100%;" @bind="NewCustomerEmail" />
+            </label>
+        </div>
+
+        <label>
+            Title<br />
+            <input style="width:100%;" @bind="NewTitle" />
+        </label>
+
+        <label>
+            Description<br />
+            <textarea style="width:100%;" rows="3" @bind="NewDescription"></textarea>
+        </label>
+
+        <button @onclick="CreateTicket" disabled="@IsBusy">Create</button>
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <p style="color:crimson;">@Error</p>
+        }
+    </section>
+
+    <section style="border:1px solid #ddd; padding:1rem; border-radius:8px;">
+        <h3 style="margin-top:0;">All Tickets</h3>
+
+        <button @onclick="LoadTickets" disabled="@IsBusy">Refresh</button>
+
+        @if (Ticket.Count == 0)
+        {
+            <p>No tickets yet.</p>
+        }
+        else
+        {
+            <table style="width:100%; border-collapse: collapse; margin-top: .75rem;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left; border-bottom:1px solid #ddd; padding:.5rem;">Title</th>
+                        <th style="text-align:left; border-bottom:1px solid #ddd; padding:.5rem;">Customer</th>
+                        <th style="text-align:left; border-bottom:1px solid #ddd; padding:.5rem;">Status</th>
+                        <th style="text-align:left; border-bottom:1px solid #ddd; padding:.5rem;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var t in Ticket)
+                {
+                    <tr>
+                        <td style="border-bottom:1px solid #eee; padding:.5rem;">@t.Title</td>
+                        <td style="border-bottom:1px solid #eee; padding:.5rem;">@t.CustomerDisplayName</td>
+                        <td style="border-bottom:1px solid #eee; padding:.5rem;">@t.Status</td>
+                        <td style="border-bottom:1px solid #eee; padding:.5rem;">
+                            <select @bind="t.Status" style="margin-right:.5rem;">
+                                <option>New</option>
+                                <option>InProgress</option>
+                                <option>Resolved</option>
+                                <option>Closed</option>
+                            </select>
+                            <button @onclick="() => ChangeStatus(t)" disabled="@IsBusy">Set</button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </section>
+</div>
+
+@code {
+    private bool IsBusy;
+    private string Error = "";
+    private List<TicketResponse> Ticket = new();
+
+    private string NewCustomerName = "";
+    private string NewCustomerEmail = "";
+    private string NewTitle = "";
+    private string NewDescription = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTickets();
+    }
+
+    private async Task LoadTickets()
+    {
+        Error = "";
+        IsBusy = true;
+        try
+        {
+            Ticket = (await Api.GetAllAsync(CancellationToken.None)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Error = ex.ToString();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task CreateTicket()
+    {
+        Error = "";
+        IsBusy = true;
+        try
+        {
+            var created = await Api.CreateAsync(new CreateTicketRequest
+            {
+                CustomerDisplayName = NewCustomerName,
+                CustomerEmail = NewCustomerEmail,
+                Title = NewTitle,
+                Description = NewDescription
+            }, CancellationToken.None);
+
+            if (created is null)
+            {
+                Error = "Create failed (check API is running and URL/HTTPS is correct).";
+                return;
+            }
+
+            // Reset form + refresh list
+            NewTitle = "";
+            NewDescription = "";
+            await LoadTickets();
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ChangeStatus(TicketResponse t)
+    {
+        Error = "";
+        IsBusy = true;
+        try
+        {
+            bool ok = await Api.ChangeStatusAsync(t.Id, new ChangeTicketStatusRequest { Status = t.Status }, CancellationToken.None);
+            if (!ok)
+                Error = "Status update failed.";
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+}
